@@ -10,8 +10,8 @@ pipeline {
         stage('Checkout') {
             steps {
                 // Cloner depuis GitHub
-                git branch: 'main', 
-                    url: 'https://github.com/VOTRE-UTILISATEUR/jenkins-devsecops-tp.git'
+               git branch: 'main', 
+    url: 'https://github.com/hibasarhane/jenkins-devsecops-tp.git'
                 echo '✅ Code récupéré depuis GitHub'
             }
         }
