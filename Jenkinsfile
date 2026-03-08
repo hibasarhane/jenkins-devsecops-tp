@@ -10,8 +10,8 @@ pipeline {
         stage('Checkout') {
             steps {
                 // Cloner depuis GitHub
-               git branch: 'main', 
-    url: 'https://github.com/hibasarhane/jenkins-devsecops-tp.git'
+                git branch: 'main', 
+                    url: 'https://github.com/hibasarhane/jenkins-devsecops-tp.git'
                 echo '✅ Code récupéré depuis GitHub'
             }
         }
@@ -19,9 +19,20 @@ pipeline {
         stage('Installer les dépendances') {
             steps {
                 sh '''
-                    pip3 install -r requirements.txt || true
-                    pip3 install pytest safety bandit
-                    echo "✅ Dépendances installées"
+                    # Créer un environnement virtuel pour éviter les problèmes de permission
+                    python3 -m venv venv
+                    
+                    # Activer l'environnement virtuel
+                    . venv/bin/activate
+                    
+                    # Mettre à jour pip
+                    pip install --upgrade pip
+                    
+                    # Installer les dépendances
+                    pip install -r requirements.txt || true
+                    pip install pytest safety bandit
+                    
+                    echo "✅ Dépendances installées dans environnement virtuel"
                 '''
             }
         }
@@ -29,6 +40,10 @@ pipeline {
         stage('Tests unitaires') {
             steps {
                 sh '''
+                    # Activer l'environnement virtuel
+                    . venv/bin/activate
+                    
+                    # Exécuter les tests
                     pytest test_app.py -v --junitxml=test-results.xml
                     echo "✅ Tests exécutés"
                 '''
@@ -38,6 +53,10 @@ pipeline {
         stage('Scan SAST - Bandit') {
             steps {
                 sh '''
+                    # Activer l'environnement virtuel
+                    . venv/bin/activate
+                    
+                    # Exécuter Bandit
                     bandit -r . -f html -o bandit-report.html || true
                     echo "✅ Scan SAST terminé"
                 '''
@@ -47,6 +66,10 @@ pipeline {
         stage('Scan SCA - Safety') {
             steps {
                 sh '''
+                    # Activer l'environnement virtuel
+                    . venv/bin/activate
+                    
+                    # Exécuter Safety
                     safety check --full-report || true
                     echo "✅ Scan Safety terminé"
                 '''
@@ -56,6 +79,10 @@ pipeline {
         stage('Scan SCA - OWASP') {
             steps {
                 sh '''
+                    # Activer l'environnement virtuel (optionnel pour OWASP)
+                    . venv/bin/activate
+                    
+                    # Exécuter OWASP Dependency Check
                     mkdir -p reports
                     if command -v dependency-check.sh &> /dev/null; then
                         dependency-check.sh --scan . --format HTML --out reports/ --project "TP-Jenkins-GitHub" || true
@@ -70,9 +97,15 @@ pipeline {
         stage('Analyse des vulnérabilités') {
             steps {
                 script {
+                    // Activer l'environnement virtuel
+                    sh '. venv/bin/activate'
+                    
                     // Vérifier les vulnérabilités critiques
                     def criticalVulns = sh(
-                        script: 'safety check --bare | grep -i "critical" | wc -l',
+                        script: '''
+                            . venv/bin/activate
+                            safety check --bare | grep -i "critical" | wc -l
+                        ''',
                         returnStdout: true
                     ).trim()
                     
