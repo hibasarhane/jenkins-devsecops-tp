@@ -109,12 +109,7 @@ pipeline {
                         
                         // Récupérer l'ID de la tâche
                         def taskId = sh(
-                            script: """
-                                curl -s '${sonarUrl}/api/ce/component?component=${projectKey}' | \
-                                grep -o '"id":"[^"]*"' | \
-                                head -1 | \
-                                cut -d'"' -f4
-                            """,
+                            script: "curl -s '${sonarUrl}/api/ce/component?component=${projectKey}' | grep -o '\"id\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4",
                             returnStdout: true
                         ).trim()
                         
@@ -123,7 +118,7 @@ pipeline {
                             
                             // Vérifier le statut
                             def status = sh(
-                                script: "curl -s '${sonarUrl}/api/ce/task?id=${taskId}' | grep -o '"status":"[^"]*"' | cut -d'"' -f4",
+                                script: "curl -s '${sonarUrl}/api/ce/task?id=${taskId}' | grep -o '\"status\":\"[^\"]*\"' | cut -d'\"' -f4",
                                 returnStdout: true
                             ).trim()
                             
@@ -131,7 +126,7 @@ pipeline {
                             
                             // Récupérer le résultat du Quality Gate
                             def qualityGate = sh(
-                                script: "curl -s '${sonarUrl}/api/qualitygates/project_status?projectKey=${projectKey}' | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4",
+                                script: "curl -s '${sonarUrl}/api/qualitygates/project_status?projectKey=${projectKey}' | grep -o '\"status\":\"[^\"]*\"' | head -1 | cut -d'\"' -f4",
                                 returnStdout: true
                             ).trim()
                             
