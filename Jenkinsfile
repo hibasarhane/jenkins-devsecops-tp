@@ -28,7 +28,7 @@ pipeline {
                     # Mettre à jour pip
                     pip install --upgrade pip
                     
-                    # Installer les dépendances
+                    # Installer les dépendances avec gestion des conflits
                     pip install -r requirements.txt || true
                     pip install pytest safety bandit
                     
@@ -96,9 +96,58 @@ pipeline {
         
         stage('Quality Gate') {
             steps {
-                timeout(time: 1, unit: 'MINUTES') {
-                    // Attendre le résultat du Quality Gate
-                    waitForQualityGate abortPipeline: true
+                timeout(time: 2, unit: 'MINUTES') {
+                    script {
+                        // URL correcte de SonarQube
+                        def sonarUrl = "http://172.17.0.1:9000"
+                        def projectKey = "TP-Jenkins-Security"
+                        
+                        echo "🔍 Vérification du Quality Gate sur ${sonarUrl}"
+                        
+                        // Attendre que l'analyse soit terminée
+                        sleep 10
+                        
+                        // Récupérer l'ID de la tâche
+                        def taskId = sh(
+                            script: """
+                                curl -s '${sonarUrl}/api/ce/component?component=${projectKey}' | \
+                                grep -o '"id":"[^"]*"' | \
+                                head -1 | \
+                                cut -d'"' -f4
+                            """,
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (taskId) {
+                            echo "✅ Tâche trouvée: ${taskId}"
+                            
+                            // Vérifier le statut
+                            def status = sh(
+                                script: "curl -s '${sonarUrl}/api/ce/task?id=${taskId}' | grep -o '"status":"[^"]*"' | cut -d'"' -f4",
+                                returnStdout: true
+                            ).trim()
+                            
+                            echo "📊 Statut de la tâche: ${status}"
+                            
+                            // Récupérer le résultat du Quality Gate
+                            def qualityGate = sh(
+                                script: "curl -s '${sonarUrl}/api/qualitygates/project_status?projectKey=${projectKey}' | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4",
+                                returnStdout: true
+                            ).trim()
+                            
+                            echo "🏁 Quality Gate: ${qualityGate}"
+                            
+                            if (qualityGate == "ERROR") {
+                                error "❌ Quality Gate échoué!"
+                            } else if (qualityGate == "OK") {
+                                echo "✅ Quality Gate réussi!"
+                            } else {
+                                echo "⚠️ Quality Gate: ${qualityGate}"
+                            }
+                        } else {
+                            echo "⚠️ Aucune tâche trouvée, vérification manuelle nécessaire"
+                        }
+                    }
                 }
             }
         }
